@@ -39,10 +39,6 @@ const menus = [
       },
     ],
   },
-  {
-    name: "IdeasGPT",
-    to: "/ideas",
-  },
 ];
 
 export function Navigation({ isLoggedIn }: { isLoggedIn: boolean }) {
