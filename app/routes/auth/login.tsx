@@ -1,6 +1,6 @@
 import { Form } from "react-router";
 import InputPair from "~/common/components/input-pair";
-import { Button } from "~/common/ui/button";
+import { Button } from "~/common/components/ui/button";
 import type { Route } from "./+types/join";
 
 export const meta: Route.MetaFunction = () => {
