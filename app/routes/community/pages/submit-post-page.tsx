@@ -1,12 +1,11 @@
 import { Form } from "react-router";
 import { Hero } from "~/common/components/hero";
 import InputPair from "~/common/components/input-pair";
-import SelectPair from "~/common/components/select-pair";
 import { Button } from "~/common/components/ui/button";
 import type { Route } from "./+types/submit-post-page";
 
 export const meta: Route.MetaFunction = () => {
-  return [{ title: "Submit Post | wemake" }];
+  return [{ title: "Submit Post | connect us" }];
 };
 
 export default function SubmitPostPage() {
@@ -14,7 +13,7 @@ export default function SubmitPostPage() {
     <div className="space-y-20">
       <Hero
         title="Create Discussion"
-        subtitle="Ask questions, share ideas, and connect with other developers"
+        subtitle="Ask questions, share ideas, and connect with others"
       />
       <Form className="flex flex-col gap-10 max-w-screen-md mx-auto">
         <InputPair
@@ -24,18 +23,6 @@ export default function SubmitPostPage() {
           description="(40 characters or less)"
           required
           placeholder="i.e What is the best productivity tool?"
-        />
-        <SelectPair
-          required
-          name="category"
-          label="Category"
-          description="Select the category that best fits your discussion"
-          placeholder="i.e Productivity"
-          options={[
-            { label: "Productivity", value: "productivity" },
-            { label: "Programming", value: "programming" },
-            { label: "Design", value: "design" },
-          ]}
         />
         <InputPair
           label="Content"

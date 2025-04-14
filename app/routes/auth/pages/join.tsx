@@ -1,4 +1,5 @@
-import { Form } from "react-router";
+import { useState } from "react";
+import { Form, useNavigate } from "react-router";
 import InputPair from "~/common/components/input-pair";
 import { Button } from "~/common/components/ui/button";
 import type { Route } from "./+types/join";
@@ -8,11 +9,57 @@ export const meta: Route.MetaFunction = () => {
 };
 
 export default function JoinPage() {
+  const navigate = useNavigate();
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setError(null);
+
+    const formData = new FormData(e.currentTarget);
+    const data = {
+      name: formData.get("name"),
+      username: formData.get("username"),
+      email: formData.get("email"),
+      password: formData.get("password"),
+      confirmPassword: formData.get("confirmPassword"),
+    };
+
+    try {
+      const response = await fetch("http://localhost:8000/api/users/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+        credentials: "include",
+      });
+
+      console.log(response);
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error("Registration error:", errorData);
+        throw new Error(errorData.message || "회원가입에 실패했습니다.");
+      }
+
+      // 회원가입 성공 시 로그인 페이지로 이동
+      navigate("/auth/login");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "회원가입에 실패했습니다.");
+    }
+  };
+
   return (
     <div className="flex flex-col relative items-center justify-center h-full">
       <div className="flex items-center flex-col justify-center w-full max-w-md gap-10">
         <h1 className="text-2xl font-semibold">Create an account</h1>
-        <Form className="w-full space-y-4">
+        {error && (
+          <div className="w-full p-4 text-sm text-red-500 bg-red-50 rounded-md">
+            {error}
+          </div>
+        )}
+        <Form onSubmit={handleSubmit} className="w-full space-y-4">
           <InputPair
             label="Name"
             description="Enter your name"
@@ -45,6 +92,15 @@ export default function JoinPage() {
             label="Password"
             description="Enter your password"
             name="password"
+            required
+            type="password"
+            placeholder="********"
+          />
+          <InputPair
+            id="confirmPassword"
+            label="Confirm Password"
+            description="Confirm your password"
+            name="confirmPassword"
             required
             type="password"
             placeholder="********"

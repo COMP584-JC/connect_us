@@ -1,4 +1,4 @@
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 import {
   NavigationMenu,
   NavigationMenuContent,
@@ -8,6 +8,7 @@ import {
   NavigationMenuTrigger,
   navigationMenuTriggerStyle,
 } from "~/common/components/ui/navigation-menu";
+import { useAuth } from "~/contexts/auth-context";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Button } from "./ui/button";
 import { Separator } from "./ui/separator";
@@ -42,6 +43,22 @@ const menus = [
 ];
 
 export function Navigation({ isLoggedIn }: { isLoggedIn: boolean }) {
+  const navigate = useNavigate();
+  const { logout } = useAuth();
+
+  const handleLogout = async () => {
+    try {
+      await fetch("http://localhost:8000/api/users/logout", {
+        method: "POST",
+        credentials: "include",
+      });
+      logout();
+      navigate("/");
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
+  };
+
   return (
     <nav className="flex px-20 h-16 items-center justify-between backdrop-blur fixed top-0 left-0 right-0 z-50 bg-background/50">
       <div className="flex items-center">
@@ -89,7 +106,9 @@ export function Navigation({ isLoggedIn }: { isLoggedIn: boolean }) {
         </NavigationMenu>
       </div>
       {isLoggedIn ? (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-4">
+          <Button onClick={handleLogout}>Logout</Button>
+
           <Avatar>
             <AvatarImage src="https://github.com/JongminChoi98.png" />
             <AvatarFallback>J</AvatarFallback>

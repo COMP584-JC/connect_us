@@ -1,4 +1,4 @@
-import { ChevronUpIcon, DotIcon } from "lucide-react";
+import { DotIcon } from "lucide-react";
 import { Form, Link } from "react-router";
 import {
   Avatar,
@@ -19,7 +19,7 @@ import { Reply } from "../components/reply";
 import type { Route } from "./+types/post-page";
 
 export const meta: Route.MetaFunction = ({ params }) => {
-  return [{ title: `${params.postId} | wemake` }];
+  return [{ title: `${params.postId} | connect us` }];
 };
 
 export default function PostPage() {
@@ -51,10 +51,6 @@ export default function PostPage() {
       <div className="grid grid-cols-6 gap-40 items-start">
         <div className="col-span-4 space-y-10">
           <div className="flex w-full items-start gap-10">
-            <Button variant="outline" className="flex flex-col h-14">
-              <ChevronUpIcon className="size-4 shrink-0" />
-              <span>10</span>
-            </Button>
             <div className="space-y-20">
               <div className="space-y-2">
                 <h2 className="text-3xl font-bold">
@@ -112,12 +108,11 @@ export default function PostPage() {
             </Avatar>
             <div className="flex flex-col">
               <h4 className="text-lg font-medium">Joey</h4>
-              <Badge variant="secondary">Entrepreneur</Badge>
+              <Badge variant="secondary">Developer</Badge>
             </div>
           </div>
           <div className="gap-2 text-sm flex flex-col">
             <span>🎂 Joined 3 months ago</span>
-            <span>🚀 Launched 10 products</span>
           </div>
           <Button variant="outline" className="w-full">
             Follow

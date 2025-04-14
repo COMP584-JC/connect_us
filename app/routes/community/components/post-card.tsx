@@ -1,17 +1,11 @@
-import { ChevronUpIcon, DotIcon } from "lucide-react";
+import { DotIcon } from "lucide-react";
 import { Link } from "react-router";
 import {
   Avatar,
   AvatarFallback,
   AvatarImage,
 } from "~/common/components/ui/avatar";
-import { Button } from "~/common/components/ui/button";
-import {
-  Card,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "~/common/components/ui/card";
+import { Card, CardHeader, CardTitle } from "~/common/components/ui/card";
 import { cn } from "~/lib/utils";
 
 interface PostCardProps {
@@ -51,26 +45,12 @@ export function PostCard({
           <div className="space-y-2">
             <CardTitle>{title}</CardTitle>
             <div className="flex gap-2 text-sm leading-tight text-muted-foreground">
-              <span>{author} on</span>
-              <span>{category}</span>
+              <span>{author}</span>
               <DotIcon className="w-4 h-4" />
               <span>{createdAt}</span>
             </div>
           </div>
         </CardHeader>
-        {!expanded && (
-          <CardFooter className="flex justify-end">
-            <Button variant="link">Reply &rarr;</Button>
-          </CardFooter>
-        )}
-        {expanded && (
-          <CardFooter className="flex justify-end  pb-0">
-            <Button variant="outline" className="flex flex-col h-14">
-              <ChevronUpIcon className="size-4 shrink-0" />
-              <span>{votesCount}</span>
-            </Button>
-          </CardFooter>
-        )}
       </Card>
     </Link>
   );
