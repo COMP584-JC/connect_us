@@ -1,26 +1,72 @@
-import { ChevronDownIcon } from "lucide-react";
-import { Form, Link, useSearchParams } from "react-router";
+import { useEffect, useState } from "react";
+import { Form, Link } from "react-router";
+import avatar from "~/assets/avatar.jpeg";
 import { Hero } from "~/common/components/hero";
 import { Button } from "~/common/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from "~/common/components/ui/dropdown-menu";
 import { Input } from "~/common/components/ui/input";
 import { PostCard } from "../components/post-card";
-import { PERIOD_OPTIONS, SORT_OPTIONS } from "../constants";
 import type { Route } from "./+types/community-page";
+
+interface Post {
+  postId: number;
+  title: string;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+  userId: number;
+  user: {
+    userId: number;
+    name: string;
+    username: string;
+    email: string;
+  };
+}
+
+interface PostCardData {
+  id: string;
+  title: string;
+  author: string;
+  authorAvatarUrl: string;
+  category: string;
+  createdAt: string;
+}
 
 export const meta: Route.MetaFunction = () => {
   return [{ title: "Community | connect us" }];
 };
 
 export default function CommunityPage() {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const sorting = searchParams.get("sorting") || "newest";
-  const period = searchParams.get("period") || "all";
+  const [posts, setPosts] = useState<PostCardData[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchPosts = async () => {
+      try {
+        const response = await fetch("http://localhost:8000/api/post");
+        const data: Post[] = await response.json();
+        const mapped = data.map((post) => ({
+          id: String(post.postId),
+          title: post.title,
+          author: post.user.name,
+          authorAvatarUrl: avatar,
+          category: "General",
+          createdAt: new Date(post.createdAt).toLocaleString(),
+        }));
+        setPosts(mapped);
+      } catch (error) {
+        console.error("Error fetching posts:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchPosts();
+  }, []);
+
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
+
   return (
     <div>
       <Hero
@@ -32,54 +78,6 @@ export default function CommunityPage() {
           <div className="col-start-2 col-span-4 space-y-10">
             <div className="flex justify-between">
               <div className="space-y-5 w-full">
-                <div className="flex items-center gap-5">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger className="flex items-center gap-1">
-                      <span className="text-sm capitalize">{sorting}</span>
-                      <ChevronDownIcon className="size-5" />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                      {SORT_OPTIONS.map((option) => (
-                        <DropdownMenuCheckboxItem
-                          className="capitalize cursor-pointer"
-                          key={option}
-                          onCheckedChange={(checked: boolean) => {
-                            if (checked) {
-                              searchParams.set("sorting", option);
-                              setSearchParams(searchParams);
-                            }
-                          }}
-                        >
-                          {option}
-                        </DropdownMenuCheckboxItem>
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                  {sorting === "popular" && (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger className="flex items-center gap-1">
-                        <span className="text-sm capitalize">{period}</span>
-                        <ChevronDownIcon className="size-5" />
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent>
-                        {PERIOD_OPTIONS.map((option) => (
-                          <DropdownMenuCheckboxItem
-                            className="capitalize cursor-pointer"
-                            key={option}
-                            onCheckedChange={(checked: boolean) => {
-                              if (checked) {
-                                searchParams.set("period", option);
-                                setSearchParams(searchParams);
-                              }
-                            }}
-                          >
-                            {option}
-                          </DropdownMenuCheckboxItem>
-                        ))}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  )}
-                </div>
                 <Form className="w-2/3">
                   <Input
                     type="text"
@@ -93,15 +91,15 @@ export default function CommunityPage() {
               </Button>
             </div>
             <div className="space-y-5">
-              {Array.from({ length: 11 }).map((_, index) => (
+              {posts.map((post) => (
                 <PostCard
-                  key={`postId-${index}`}
-                  id={`postId-${index}`}
-                  title="What is the best productivity tool?"
-                  author="Jongmin"
-                  authorAvatarUrl="https://github.com/apple.png"
-                  category="Productivity"
-                  createdAt="12 hours ago"
+                  key={post.id}
+                  id={post.id}
+                  title={post.title}
+                  author={post.author}
+                  authorAvatarUrl={post.authorAvatarUrl}
+                  category={post.category}
+                  createdAt={post.createdAt}
                   expanded
                 />
               ))}

@@ -16,27 +16,17 @@ import { Separator } from "./ui/separator";
 const menus = [
   {
     name: "Community",
-    to: "/community",
+    to: "/",
     items: [
       {
         name: "All Posts",
         description: "See all posts in the community",
-        to: "/community",
-      },
-      {
-        name: "Top Posts",
-        description: "See the top posts in the community",
-        to: "/community?sort=top",
-      },
-      {
-        name: "New Posts",
-        description: "See the new posts in the community",
-        to: "/community?sort=new",
+        to: "/",
       },
       {
         name: "Create a Post",
         description: "Create a post in the community",
-        to: "/community/create",
+        to: "/community/submit",
       },
     ],
   },
