@@ -1,7 +1,9 @@
-import { Form } from "react-router";
+import { useEffect } from "react";
+import { Form, useNavigate } from "react-router";
 import { Hero } from "~/common/components/hero";
 import InputPair from "~/common/components/input-pair";
 import { Button } from "~/common/components/ui/button";
+import { useAuth } from "~/contexts/auth-context";
 import type { Route } from "./+types/submit-post-page";
 
 export const meta: Route.MetaFunction = () => {
@@ -9,6 +11,19 @@ export const meta: Route.MetaFunction = () => {
 };
 
 export default function SubmitPostPage() {
+  const { isLoggedIn } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!isLoggedIn) {
+      navigate("/auth/login");
+    }
+  }, [isLoggedIn, navigate]);
+
+  if (!isLoggedIn) {
+    return null;
+  }
+
   return (
     <div className="space-y-20">
       <Hero
