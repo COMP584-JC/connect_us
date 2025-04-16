@@ -4,36 +4,88 @@ const { createContext, useContext, useState, useEffect } = pkg;
 
 interface AuthContextType {
   isLoggedIn: boolean;
-  login: () => void;
-  logout: () => void;
+  login: (username: string, password: string) => Promise<void>;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // 페이지 로드 시 쿠키에서 JWT 토큰 확인
     const checkAuth = async () => {
       try {
         const response = await fetch(
           "http://localhost:8000/api/users/check-auth",
           {
             credentials: "include",
+            headers: {
+              "Cache-Control": "no-cache",
+              Pragma: "no-cache",
+            },
           }
         );
-        setIsLoggedIn(response.ok);
+
+        if (response.ok) {
+          const data = await response.json();
+          setIsLoggedIn(data.isAuthenticated);
+        } else {
+          setIsLoggedIn(false);
+        }
       } catch (error) {
+        console.error("Auth check error:", error);
         setIsLoggedIn(false);
+      } finally {
+        setIsLoading(false);
       }
     };
 
     checkAuth();
   }, []);
 
-  const login = () => setIsLoggedIn(true);
-  const logout = () => setIsLoggedIn(false);
+  const login = async (username: string, password: string) => {
+    try {
+      const response = await fetch("http://localhost:8000/api/users/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ username, password }),
+        credentials: "include",
+      });
+
+      if (response.ok) {
+        setIsLoggedIn(true);
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "로그인에 실패했습니다.");
+      }
+    } catch (error) {
+      console.error("Login error:", error);
+      throw error;
+    }
+  };
+
+  const logout = async () => {
+    try {
+      const response = await fetch("http://localhost:8000/api/users/logout", {
+        method: "POST",
+        credentials: "include",
+      });
+
+      if (response.ok) {
+        setIsLoggedIn(false);
+      }
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
+  };
+
+  if (isLoading) {
+    return null;
+  }
 
   return (
     <AuthContext.Provider value={{ isLoggedIn, login, logout }}>

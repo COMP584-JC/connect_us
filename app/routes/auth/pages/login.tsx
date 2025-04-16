@@ -19,28 +19,11 @@ export default function LoginPage() {
     setError(null);
 
     const formData = new FormData(e.currentTarget);
-    const data = {
-      username: formData.get("username"),
-      password: formData.get("password"),
-    };
+    const username = formData.get("username") as string;
+    const password = formData.get("password") as string;
 
     try {
-      const response = await fetch("http://localhost:8000/api/users/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(data),
-        credentials: "include",
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error("Login error:", errorData);
-        throw new Error(errorData.message || "로그인에 실패했습니다.");
-      }
-
-      login(); // 로그인 상태 업데이트
+      await login(username, password);
       navigate("/");
     } catch (err) {
       setError(err instanceof Error ? err.message : "로그인에 실패했습니다.");

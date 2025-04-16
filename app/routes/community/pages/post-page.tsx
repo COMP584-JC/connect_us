@@ -1,5 +1,6 @@
 import { DotIcon } from "lucide-react";
-import { Form, Link, useLoaderData } from "react-router";
+import { useEffect, useState } from "react";
+import { Link, useLoaderData, useNavigate } from "react-router";
 import avatar from "~/assets/avatar.jpeg";
 import {
   Avatar,
@@ -15,6 +16,7 @@ import {
 } from "~/common/components/ui/breadcrumb";
 import { Button } from "~/common/components/ui/button";
 import { Textarea } from "~/common/components/ui/textarea";
+import { useAuth } from "~/contexts/auth-context";
 import { Reply, type ReplyProps } from "../components/reply";
 import type { Route } from "./+types/post-page";
 
@@ -84,8 +86,93 @@ export async function loader({ params }: { params: { postId: string } }) {
   return { post, replies: replyTree };
 }
 
+export async function action({
+  request,
+  params,
+}: {
+  request: Request;
+  params: { postId: string };
+}) {
+  const formData = await request.formData();
+  const reply = formData.get("reply");
+
+  if (!reply) {
+    return { error: "댓글 내용을 입력해주세요." };
+  }
+
+  try {
+    const response = await fetch(
+      `http://localhost:8000/api/post/${params.postId}/replies`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ reply }),
+        credentials: "include",
+      }
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || "댓글 작성에 실패했습니다.");
+    }
+
+    return { success: true };
+  } catch (error) {
+    return {
+      error:
+        error instanceof Error ? error.message : "댓글 작성에 실패했습니다.",
+    };
+  }
+}
+
 export default function PostPage() {
   const { post, replies } = useLoaderData<typeof loader>();
+  const { isLoggedIn } = useAuth();
+  const navigate = useNavigate();
+  const [replyContent, setReplyContent] = useState("");
+
+  useEffect(() => {
+    if (!isLoggedIn) {
+      navigate("/auth/login", { replace: true });
+    }
+  }, [isLoggedIn, navigate]);
+
+  if (!isLoggedIn) {
+    return <div>Loading...</div>;
+  }
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+
+    try {
+      const response = await fetch(
+        `http://localhost:8000/api/post/${post.postId}/replies`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ reply: replyContent }),
+          credentials: "include",
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "댓글 작성에 실패했습니다.");
+      }
+
+      // 댓글 작성 성공 후 페이지 새로고침
+      window.location.reload();
+    } catch (error) {
+      console.error("댓글 작성 중 오류 발생:", error);
+      alert(
+        error instanceof Error ? error.message : "댓글 작성에 실패했습니다."
+      );
+    }
+  };
 
   const convertToReplyProps = (reply: ReplyTree): ReplyProps => ({
     username: reply.userName,
@@ -93,6 +180,8 @@ export default function PostPage() {
     content: reply.reply,
     timestamp: new Date(reply.createdAt).toLocaleDateString(),
     topLevel: true,
+    postId: String(post.postId),
+    replyId: String(reply.postReplyId),
     children: reply.children?.map(convertToReplyProps),
   });
 
@@ -127,20 +216,26 @@ export default function PostPage() {
                 {post.content}
               </p>
             </div>
-            <Form className="flex items-start gap-5 w-3/4 mx-auto">
+            <form
+              onSubmit={handleSubmit}
+              className="flex items-start gap-5 w-3/4 mx-auto"
+            >
               <Avatar className="size-14">
                 <AvatarFallback>{post.user.name[0]}</AvatarFallback>
                 <AvatarImage src={avatar} />
               </Avatar>
               <div className="flex flex-col gap-5 items-end w-full">
                 <Textarea
+                  value={replyContent}
+                  onChange={(e) => setReplyContent(e.target.value)}
                   placeholder="Write a reply"
                   className="w-full resize-none"
                   rows={5}
+                  required
                 />
-                <Button>Reply</Button>
+                <Button type="submit">Reply</Button>
               </div>
-            </Form>
+            </form>
             <div className="space-y-10">
               <h4 className="font-semibold text-center">Replies</h4>
               <div className="flex flex-col gap-5">
