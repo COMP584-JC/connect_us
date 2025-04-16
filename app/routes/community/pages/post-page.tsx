@@ -1,11 +1,11 @@
 import { DotIcon } from "lucide-react";
-import { Form, Link } from "react-router";
+import { Form, Link, useLoaderData } from "react-router";
+import avatar from "~/assets/avatar.jpeg";
 import {
   Avatar,
   AvatarFallback,
   AvatarImage,
 } from "~/common/components/ui/avatar";
-import { Badge } from "~/common/components/ui/badge";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -18,13 +18,43 @@ import { Textarea } from "~/common/components/ui/textarea";
 import { Reply } from "../components/reply";
 import type { Route } from "./+types/post-page";
 
+type Post = {
+  postId: number;
+  title: string;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+  userId: number;
+  user: {
+    userId: number;
+    name: string;
+    username: string;
+    email: string;
+    createdAt: string;
+    updatedAt: string | null;
+  };
+};
+
 export const meta: Route.MetaFunction = ({ params }) => {
   return [{ title: `${params.postId} | connect us` }];
 };
 
+export async function loader({ params }: { params: { postId: string } }) {
+  const response = await fetch(
+    `http://localhost:8000/api/post/${params.postId}`
+  );
+  if (!response.ok) {
+    throw new Response("Post not found", { status: 404 });
+  }
+  const post: Post = await response.json();
+  return { post };
+}
+
 export default function PostPage() {
+  const { post } = useLoaderData<typeof loader>();
+
   return (
-    <div className="space-y-10">
+    <div className="max-w-4xl mx-auto space-y-10">
       <Breadcrumb>
         <BreadcrumbList>
           <BreadcrumbItem>
@@ -35,89 +65,53 @@ export default function PostPage() {
           <BreadcrumbSeparator />
           <BreadcrumbItem>
             <BreadcrumbLink asChild>
-              <Link to="/community?topic=productivity">Productivity</Link>
-            </BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbSeparator />
-          <BreadcrumbItem>
-            <BreadcrumbLink asChild>
-              <Link to="/community/postId">
-                What is the best productivity tool?
-              </Link>
+              <Link to={`/community/${post.postId}`}>{post.title}</Link>
             </BreadcrumbLink>
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
-      <div className="grid grid-cols-6 gap-40 items-start">
-        <div className="col-span-4 space-y-10">
-          <div className="flex w-full items-start gap-10">
-            <div className="space-y-20">
-              <div className="space-y-2">
-                <h2 className="text-3xl font-bold">
-                  What is the best productivity tool?
-                </h2>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <span>@joey</span>
-                  <DotIcon className="size-5" />
-                  <span>12 hours ago</span>
-                  <DotIcon className="size-5" />
-                  <span>10 replies</span>
-                </div>
-                <p className="text-muted-foreground w-3/4">
-                  Hello, I'm looking for a productivity tool that can help me
-                  manage my tasks and projects. Any recommendations? I have
-                  tried Notion, but it's not what I'm looking for. I dream of a
-                  tool that can help me manage my tasks and projects. Any
-                  recommendations?
-                </p>
+      <div className="space-y-10">
+        <div className="flex flex-col items-center w-full gap-10">
+          <div className="space-y-20 w-full">
+            <div className="space-y-2 text-center">
+              <h2 className="text-3xl font-bold">{post.title}</h2>
+              <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                <span>@{post.user.username}</span>
+                <DotIcon className="size-5" />
+                <span>{new Date(post.createdAt).toLocaleDateString()}</span>
               </div>
-              <Form className="flex items-start gap-5 w-3/4">
-                <Avatar className="size-14">
-                  <AvatarFallback>N</AvatarFallback>
-                  <AvatarImage src="https://github.com/JongminChoi98.png" />
-                </Avatar>
-                <div className="flex flex-col gap-5 items-end w-full">
-                  <Textarea
-                    placeholder="Write a reply"
-                    className="w-full resize-none"
-                    rows={5}
-                  />
-                  <Button>Reply</Button>
-                </div>
-              </Form>
-              <div className="space-y-10">
-                <h4 className="font-semibold">10 Replies</h4>
-                <div className="flex flex-col gap-5">
-                  <Reply
-                    username="Joey"
-                    avatarUrl="https://github.com/JongminChoi98.png"
-                    content="I've been using Todoist for a while now, and it's really great. It's simple, easy to use, and has a lot of features."
-                    timestamp="12 hours ago"
-                    topLevel
-                  />
-                </div>
+              <p className="text-muted-foreground mx-auto w-3/4">
+                {post.content}
+              </p>
+            </div>
+            <Form className="flex items-start gap-5 w-3/4 mx-auto">
+              <Avatar className="size-14">
+                <AvatarFallback>{post.user.name[0]}</AvatarFallback>
+                <AvatarImage src={avatar} />
+              </Avatar>
+              <div className="flex flex-col gap-5 items-end w-full">
+                <Textarea
+                  placeholder="Write a reply"
+                  className="w-full resize-none"
+                  rows={5}
+                />
+                <Button>Reply</Button>
+              </div>
+            </Form>
+            <div className="space-y-10">
+              <h4 className="font-semibold text-center">Replies</h4>
+              <div className="flex flex-col gap-5">
+                <Reply
+                  username={post.user.username}
+                  avatarUrl={avatar}
+                  content="I've been using Todoist for a while now, and it's really great. It's simple, easy to use, and has a lot of features."
+                  timestamp={new Date(post.createdAt).toLocaleDateString()}
+                  topLevel
+                />
               </div>
             </div>
           </div>
         </div>
-        <aside className="col-span-2 space-y-5 border rounded-lg p-6 shadow-sm">
-          <div className="flex gap-5">
-            <Avatar className="size-14">
-              <AvatarFallback>J</AvatarFallback>
-              <AvatarImage src="https://github.com/JongminChoi98.png" />
-            </Avatar>
-            <div className="flex flex-col">
-              <h4 className="text-lg font-medium">Joey</h4>
-              <Badge variant="secondary">Developer</Badge>
-            </div>
-          </div>
-          <div className="gap-2 text-sm flex flex-col">
-            <span>🎂 Joined 3 months ago</span>
-          </div>
-          <Button variant="outline" className="w-full">
-            Follow
-          </Button>
-        </aside>
       </div>
     </div>
   );
