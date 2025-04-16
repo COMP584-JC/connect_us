@@ -1,6 +1,7 @@
 import { DotIcon, MessageCircleIcon } from "lucide-react";
 import { useState } from "react";
 import { Form, Link } from "react-router";
+import avatar from "~/assets/avatar.jpeg";
 import {
   Avatar,
   AvatarFallback,
@@ -9,12 +10,13 @@ import {
 import { Button } from "~/common/components/ui/button";
 import { Textarea } from "~/common/components/ui/textarea";
 
-interface ReplyProps {
+export interface ReplyProps {
   username: string;
   avatarUrl: string;
   content: string;
   timestamp: string;
   topLevel: boolean;
+  children?: ReplyProps[];
 }
 
 export function Reply({
@@ -23,9 +25,11 @@ export function Reply({
   content,
   timestamp,
   topLevel,
+  children,
 }: ReplyProps) {
   const [replying, setReplying] = useState(false);
   const toggleReplying = () => setReplying((prev) => !prev);
+
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-start gap-5 w-2/3">
@@ -52,7 +56,7 @@ export function Reply({
         <Form className="flex items-start gap-5 w-3/4">
           <Avatar className="size-14">
             <AvatarFallback>N</AvatarFallback>
-            <AvatarImage src="https://github.com/JongminChoi98.png" />
+            <AvatarImage src={avatar} />
           </Avatar>
           <div className="flex flex-col gap-5 items-end w-full">
             <Textarea
@@ -64,15 +68,15 @@ export function Reply({
           </div>
         </Form>
       )}
-      {topLevel && (
+      {children && children.length > 0 && (
         <div className="pl-20 w-full">
-          <Reply
-            username="Amy"
-            avatarUrl="https://github.com/apple.png"
-            content="I've been using Todoist for a while now, and it's really great. It's simple, easy to use, and has a lot of features."
-            timestamp="12 hours ago"
-            topLevel={false}
-          />
+          {children.map((child) => (
+            <Reply
+              key={child.username + child.timestamp}
+              {...child}
+              topLevel={false}
+            />
+          ))}
         </div>
       )}
     </div>

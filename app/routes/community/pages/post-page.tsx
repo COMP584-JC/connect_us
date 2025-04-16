@@ -15,7 +15,7 @@ import {
 } from "~/common/components/ui/breadcrumb";
 import { Button } from "~/common/components/ui/button";
 import { Textarea } from "~/common/components/ui/textarea";
-import { Reply } from "../components/reply";
+import { Reply, type ReplyProps } from "../components/reply";
 import type { Route } from "./+types/post-page";
 
 type Post = {
@@ -35,23 +35,66 @@ type Post = {
   };
 };
 
+type PostReply = {
+  postReplyId: number;
+  postId: number;
+  parentId: number | null;
+  userId: number;
+  userName: string;
+  reply: string;
+  createdAt: string;
+  updatedAt: string;
+  children: PostReply[] | null;
+};
+
+type ReplyTree = PostReply & {
+  children: ReplyTree[];
+};
+
 export const meta: Route.MetaFunction = ({ params }) => {
   return [{ title: `${params.postId} | connect us` }];
 };
 
 export async function loader({ params }: { params: { postId: string } }) {
-  const response = await fetch(
-    `http://localhost:8000/api/post/${params.postId}`
-  );
-  if (!response.ok) {
+  const [postResponse, repliesResponse] = await Promise.all([
+    fetch(`http://localhost:8000/api/post/${params.postId}`),
+    fetch(`http://localhost:8000/api/post/${params.postId}/replies`),
+  ]);
+
+  if (!postResponse.ok) {
     throw new Response("Post not found", { status: 404 });
   }
-  const post: Post = await response.json();
-  return { post };
+
+  const post: Post = await postResponse.json();
+  const replies: PostReply[] = await repliesResponse.json();
+
+  // 댓글이 없는 경우 빈 배열 반환
+  if (!replies || replies.length === 0) {
+    return { post, replies: [] };
+  }
+
+  // children이 null인 경우 빈 배열로 변환
+  const convertNullChildren = (reply: PostReply): ReplyTree => ({
+    ...reply,
+    children: reply.children ? reply.children.map(convertNullChildren) : [],
+  });
+
+  const replyTree = replies.map(convertNullChildren);
+
+  return { post, replies: replyTree };
 }
 
 export default function PostPage() {
-  const { post } = useLoaderData<typeof loader>();
+  const { post, replies } = useLoaderData<typeof loader>();
+
+  const convertToReplyProps = (reply: ReplyTree): ReplyProps => ({
+    username: reply.userName,
+    avatarUrl: avatar,
+    content: reply.reply,
+    timestamp: new Date(reply.createdAt).toLocaleDateString(),
+    topLevel: true,
+    children: reply.children?.map(convertToReplyProps),
+  });
 
   return (
     <div className="max-w-4xl mx-auto space-y-10">
@@ -101,13 +144,12 @@ export default function PostPage() {
             <div className="space-y-10">
               <h4 className="font-semibold text-center">Replies</h4>
               <div className="flex flex-col gap-5">
-                <Reply
-                  username={post.user.username}
-                  avatarUrl={avatar}
-                  content="I've been using Todoist for a while now, and it's really great. It's simple, easy to use, and has a lot of features."
-                  timestamp={new Date(post.createdAt).toLocaleDateString()}
-                  topLevel
-                />
+                {replies.map((reply) => (
+                  <Reply
+                    key={reply.postReplyId}
+                    {...convertToReplyProps(reply)}
+                  />
+                ))}
               </div>
             </div>
           </div>
