@@ -1,9 +1,8 @@
-import { useEffect } from "react";
+import { useState } from "react";
 import { Form, useNavigate } from "react-router";
 import { Hero } from "~/common/components/hero";
 import InputPair from "~/common/components/input-pair";
 import { Button } from "~/common/components/ui/button";
-import { useAuth } from "~/contexts/auth-context";
 import type { Route } from "./+types/submit-post-page";
 
 export const meta: Route.MetaFunction = () => {
@@ -11,18 +10,45 @@ export const meta: Route.MetaFunction = () => {
 };
 
 export default function SubmitPostPage() {
-  const { isLoggedIn } = useAuth();
   const navigate = useNavigate();
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!isLoggedIn) {
-      navigate("/auth/login");
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setError(null);
+
+    const formData = new FormData(e.currentTarget);
+    const title = formData.get("title") as string;
+    const content = formData.get("content") as string;
+
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL}/post`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify({ title, content }),
+          credentials: "include",
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "게시글 작성에 실패했습니다.");
+      }
+
+      const data = await response.json();
+      // 작성된 게시글 페이지로 이동
+      navigate(`/community/${data.postId}`);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "게시글 작성에 실패했습니다."
+      );
     }
-  }, [isLoggedIn, navigate]);
-
-  if (!isLoggedIn) {
-    return null;
-  }
+  };
 
   return (
     <div className="space-y-20">
@@ -30,7 +56,15 @@ export default function SubmitPostPage() {
         title="Create Discussion"
         subtitle="Ask questions, share ideas, and connect with others"
       />
-      <Form className="flex flex-col gap-10 max-w-screen-md mx-auto">
+      {error && (
+        <div className="max-w-screen-md mx-auto p-4 text-sm text-red-500 bg-red-50 rounded-md">
+          {error}
+        </div>
+      )}
+      <Form
+        onSubmit={handleSubmit}
+        className="flex flex-col gap-10 max-w-screen-md mx-auto"
+      >
         <InputPair
           label="Title"
           name="title"
@@ -48,7 +82,9 @@ export default function SubmitPostPage() {
           placeholder="i.e I'm looking for a tool that can help me manage my time and tasks. What are the best tools out there?"
           textArea
         />
-        <Button className="mx-auto">Create Discussion</Button>
+        <Button type="submit" className="mx-auto">
+          Create Discussion
+        </Button>
       </Form>
     </div>
   );

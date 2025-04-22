@@ -42,7 +42,17 @@ export default function CommunityPage() {
   useEffect(() => {
     const fetchPosts = async () => {
       try {
-        const response = await fetch("http://localhost:8000/api/post");
+        const response = await fetch(
+          `${import.meta.env.VITE_API_BASE_URL}/post`,
+          {
+            method: "GET",
+            credentials: "include",
+            headers: {
+              "Content-Type": "application/json",
+              Accept: "application/json",
+            },
+          }
+        );
         const data: Post[] = await response.json();
         const mapped = data.map((post) => ({
           id: String(post.postId),

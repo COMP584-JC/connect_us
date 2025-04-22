@@ -33,12 +33,13 @@ const menus = [
 ];
 
 export function Navigation({ isLoggedIn }: { isLoggedIn: boolean }) {
+  console.log(isLoggedIn);
   const navigate = useNavigate();
   const { logout } = useAuth();
 
   const handleLogout = async () => {
     try {
-      await fetch("http://localhost:8000/api/users/logout", {
+      await fetch(`${import.meta.env.VITE_API_BASE_URL}/users/logout`, {
         method: "POST",
         credentials: "include",
       });
@@ -68,18 +69,18 @@ export function Navigation({ isLoggedIn }: { isLoggedIn: boolean }) {
                     <NavigationMenuContent>
                       <ul className="grid w-[600px] font-light gap-3 p-4 grid-cols-2">
                         {menu.items?.map((item) => (
-                          <NavigationMenuLink>
-                            <Link
-                              className="p-3  space-y-1 block leading-none no-underline outline-none"
-                              to={item.to}
-                            >
-                              <span className="text-sm leading-none">
+                          <NavigationMenuLink key={item.name}>
+                            <div className="p-3 space-y-1 block leading-none no-underline outline-none">
+                              <Link
+                                to={item.to}
+                                className="text-sm leading-none"
+                              >
                                 {item.name}
-                              </span>
+                              </Link>
                               <p className="text-sm leading-snug text-muted-foreground">
                                 {item.description}
                               </p>
-                            </Link>
+                            </div>
                           </NavigationMenuLink>
                         ))}
                       </ul>

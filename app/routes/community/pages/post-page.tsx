@@ -1,5 +1,5 @@
 import { DotIcon } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link, useLoaderData, useNavigate } from "react-router";
 import avatar from "~/assets/avatar.jpeg";
 import {
@@ -58,32 +58,62 @@ export const meta: Route.MetaFunction = ({ params }) => {
 };
 
 export async function loader({ params }: { params: { postId: string } }) {
-  const [postResponse, repliesResponse] = await Promise.all([
-    fetch(`http://localhost:8000/api/post/${params.postId}`),
-    fetch(`http://localhost:8000/api/post/${params.postId}/replies`),
-  ]);
+  try {
+    console.log("API Base URL:", import.meta.env.VITE_API_BASE_URL);
+    console.log(
+      "Request URL:",
+      `${import.meta.env.VITE_API_BASE_URL}/post/${params.postId}`
+    );
 
-  if (!postResponse.ok) {
-    throw new Response("Post not found", { status: 404 });
+    const [postResponse, repliesResponse] = await Promise.all([
+      fetch(`${import.meta.env.VITE_API_BASE_URL}/post/${params.postId}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        credentials: "include",
+        mode: "cors",
+      }),
+      fetch(
+        `${import.meta.env.VITE_API_BASE_URL}/post/${params.postId}/replies`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          credentials: "include",
+          mode: "cors",
+        }
+      ),
+    ]);
+
+    if (!postResponse.ok) {
+      throw new Response("Post not found", { status: 404 });
+    }
+
+    const post: Post = await postResponse.json();
+    const replies: PostReply[] = await repliesResponse.json();
+
+    // 댓글이 없는 경우 빈 배열 반환
+    if (!replies || replies.length === 0) {
+      return { post, replies: [] };
+    }
+
+    // children이 null인 경우 빈 배열로 변환
+    const convertNullChildren = (reply: PostReply): ReplyTree => ({
+      ...reply,
+      children: reply.children ? reply.children.map(convertNullChildren) : [],
+    });
+
+    const replyTree = replies.map(convertNullChildren);
+
+    return { post, replies: replyTree };
+  } catch (error) {
+    console.error("Error loading post:", error);
+    throw new Response("Error loading post", { status: 500 });
   }
-
-  const post: Post = await postResponse.json();
-  const replies: PostReply[] = await repliesResponse.json();
-
-  // 댓글이 없는 경우 빈 배열 반환
-  if (!replies || replies.length === 0) {
-    return { post, replies: [] };
-  }
-
-  // children이 null인 경우 빈 배열로 변환
-  const convertNullChildren = (reply: PostReply): ReplyTree => ({
-    ...reply,
-    children: reply.children ? reply.children.map(convertNullChildren) : [],
-  });
-
-  const replyTree = replies.map(convertNullChildren);
-
-  return { post, replies: replyTree };
 }
 
 export async function action({
@@ -102,11 +132,12 @@ export async function action({
 
   try {
     const response = await fetch(
-      `http://localhost:8000/api/post/${params.postId}/replies`,
+      `${import.meta.env.VITE_API_BASE_URL}/post/${params.postId}/replies`,
       {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Accept: "application/json",
         },
         body: JSON.stringify({ reply }),
         credentials: "include",
@@ -133,26 +164,17 @@ export default function PostPage() {
   const navigate = useNavigate();
   const [replyContent, setReplyContent] = useState("");
 
-  useEffect(() => {
-    if (!isLoggedIn) {
-      navigate("/auth/login", { replace: true });
-    }
-  }, [isLoggedIn, navigate]);
-
-  if (!isLoggedIn) {
-    return <div>Loading...</div>;
-  }
-
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     try {
       const response = await fetch(
-        `http://localhost:8000/api/post/${post.postId}/replies`,
+        `${import.meta.env.VITE_API_BASE_URL}/post/${post.postId}/replies`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            Accept: "application/json",
           },
           body: JSON.stringify({ reply: replyContent }),
           credentials: "include",

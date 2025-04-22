@@ -51,7 +51,7 @@ export function Reply({
 
     try {
       const response = await fetch(
-        `http://localhost:8000/api/post/replies/${replyId}/reply`,
+        `${import.meta.env.VITE_API_BASE_URL}/post/replies/${replyId}/reply`,
         {
           method: "POST",
           headers: {

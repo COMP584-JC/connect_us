@@ -14,28 +14,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
+  // 쿠키에서 JWT 토큰 확인 함수
+  const checkJwtCookie = () => {
+    if (typeof document === "undefined") return false;
+    return document.cookie
+      .split(";")
+      .some((cookie) => cookie.trim().startsWith("jwt="));
+  };
+
   useEffect(() => {
     const checkAuth = async () => {
       try {
+        // 로딩 시작
+        setIsLoading(true);
+
         const response = await fetch(
-          "http://localhost:8000/api/users/check-auth",
+          `${import.meta.env.VITE_API_BASE_URL}/users/check-auth`,
           {
             credentials: "include",
             headers: {
               "Cache-Control": "no-cache",
               Pragma: "no-cache",
+              Accept: "application/json",
+              "X-Requested-With": "XMLHttpRequest",
             },
+            mode: "cors",
           }
         );
 
-        if (response.ok) {
-          const data = await response.json();
-          setIsLoggedIn(data.isAuthenticated);
+        // 401 이면 무조건 로그아웃
+        if (response.status === 401) {
+          setIsLoggedIn(false);
+        } else if (response.ok) {
+          const { isAuthenticated } = await response.json();
+          setIsLoggedIn(isAuthenticated);
         } else {
           setIsLoggedIn(false);
         }
-      } catch (error) {
-        console.error("Auth check error:", error);
+      } catch (err) {
+        console.error("Auth check failed", err);
         setIsLoggedIn(false);
       } finally {
         setIsLoading(false);
@@ -47,14 +64,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (username: string, password: string) => {
     try {
-      const response = await fetch("http://localhost:8000/api/users/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ username, password }),
-        credentials: "include",
-      });
+      const response = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL}/users/login`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ username, password }),
+          credentials: "include",
+        }
+      );
 
       if (response.ok) {
         setIsLoggedIn(true);
@@ -70,10 +90,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     try {
-      const response = await fetch("http://localhost:8000/api/users/logout", {
-        method: "POST",
-        credentials: "include",
-      });
+      const response = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL}/users/logout`,
+        {
+          method: "POST",
+          credentials: "include",
+        }
+      );
 
       if (response.ok) {
         setIsLoggedIn(false);
