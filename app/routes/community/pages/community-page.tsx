@@ -38,21 +38,24 @@ export const meta: Route.MetaFunction = () => {
 export default function CommunityPage() {
   const [posts, setPosts] = useState<PostCardData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     const fetchPosts = async () => {
       try {
-        const response = await fetch(
-          `${import.meta.env.VITE_API_BASE_URL}/post`,
-          {
-            method: "GET",
-            credentials: "include",
-            headers: {
-              "Content-Type": "application/json",
-              Accept: "application/json",
-            },
-          }
-        );
+        const url = new URL(`${import.meta.env.VITE_API_BASE_URL}/post`);
+        if (searchQuery) {
+          url.searchParams.append("search", searchQuery);
+        }
+
+        const response = await fetch(url.toString(), {
+          method: "GET",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+        });
         const data: Post[] = await response.json();
         const mapped = data.map((post) => ({
           id: String(post.postId),
@@ -71,7 +74,14 @@ export default function CommunityPage() {
     };
 
     fetchPosts();
-  }, []);
+  }, [searchQuery]);
+
+  const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const search = formData.get("search") as string;
+    setSearchQuery(search);
+  };
 
   if (isLoading) {
     return <div>Loading...</div>;
@@ -88,11 +98,12 @@ export default function CommunityPage() {
           <div className="col-start-2 col-span-4 space-y-10">
             <div className="flex justify-between">
               <div className="space-y-5 w-full">
-                <Form className="w-2/3">
+                <Form onSubmit={handleSearch} className="w-2/3">
                   <Input
                     type="text"
                     name="search"
                     placeholder="Search for discussions"
+                    defaultValue={searchQuery}
                   />
                 </Form>
               </div>
