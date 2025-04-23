@@ -1,6 +1,11 @@
-import type { ReactNode } from "react";
-import pkg from "react";
-const { createContext, useContext, useState, useEffect } = pkg;
+// auth-context.tsx
+import {
+  createContext,
+  type ReactNode,
+  useContext,
+  useEffect,
+  useState,
+} from "react";
 
 interface AuthContextType {
   isLoggedIn: boolean;
@@ -14,20 +19,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  // 쿠키에서 JWT 토큰 확인 함수
-  const checkJwtCookie = () => {
-    if (typeof document === "undefined") return false;
-    return document.cookie
-      .split(";")
-      .some((cookie) => cookie.trim().startsWith("jwt="));
-  };
-
   useEffect(() => {
     const checkAuth = async () => {
+      setIsLoading(true);
       try {
-        // 로딩 시작
-        setIsLoading(true);
-
         const response = await fetch(
           `${import.meta.env.VITE_API_BASE_URL}/users/check-auth`,
           {
@@ -42,15 +37,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         );
 
-        // 401 이면 무조건 로그아웃
-        if (response.status === 401) {
-          setIsLoggedIn(false);
-        } else if (response.ok) {
-          const { isAuthenticated } = await response.json();
-          setIsLoggedIn(isAuthenticated);
-        } else {
-          setIsLoggedIn(false);
-        }
+        const data = await response.json();
+        console.log("check-auth response:", response.status, data);
+
+        // 200 OK && data.isAuthenticated true → 로그인 상태
+        setIsLoggedIn(response.ok && data.isAuthenticated === true);
       } catch (err) {
         console.error("Auth check failed", err);
         setIsLoggedIn(false);
@@ -63,28 +54,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (username: string, password: string) => {
-    try {
-      const response = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL}/users/login`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ username, password }),
-          credentials: "include",
-        }
-      );
-
-      if (response.ok) {
-        setIsLoggedIn(true);
-      } else {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "로그인에 실패했습니다.");
+    const response = await fetch(
+      `${import.meta.env.VITE_API_BASE_URL}/users/login`,
+      {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password }),
       }
-    } catch (error) {
-      console.error("Login error:", error);
-      throw error;
+    );
+
+    if (response.ok) {
+      setIsLoggedIn(true);
+    } else {
+      const errorData = await response.json();
+      throw new Error(errorData.message || "로그인에 실패했습니다.");
     }
   };
 
@@ -97,9 +81,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           credentials: "include",
         }
       );
-
       if (response.ok) {
         setIsLoggedIn(false);
+      } else {
+        console.error("Logout failed:", response.status);
       }
     } catch (error) {
       console.error("Logout error:", error);
@@ -119,7 +104,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (context === undefined) {
+  if (!context) {
     throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
