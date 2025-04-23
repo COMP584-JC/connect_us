@@ -13,10 +13,8 @@ interface PostCardProps {
   title: string;
   author: string;
   authorAvatarUrl: string;
-  category: string;
   createdAt: string;
   expanded?: boolean;
-  votesCount?: number;
 }
 
 export function PostCard({
@@ -24,10 +22,8 @@ export function PostCard({
   title,
   author,
   authorAvatarUrl,
-  category,
   createdAt,
   expanded = false,
-  votesCount = 0,
 }: PostCardProps) {
   return (
     <Link to={`/community/${id}`} className="block">

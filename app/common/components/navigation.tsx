@@ -33,7 +33,6 @@ const menus = [
 ];
 
 export function Navigation({ isLoggedIn }: { isLoggedIn: boolean }) {
-  console.log(isLoggedIn);
   const navigate = useNavigate();
   const { logout } = useAuth();
 

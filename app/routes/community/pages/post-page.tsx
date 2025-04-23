@@ -1,4 +1,3 @@
-// src/routes/post-page.tsx
 import { DotIcon } from "lucide-react";
 import { useState } from "react";
 import { Link, useLoaderData, useNavigate } from "react-router";
@@ -21,7 +20,6 @@ import { useAuth } from "~/contexts/auth-context";
 import { Reply, type ReplyProps } from "../components/reply";
 import type { Route } from "./+types/post-page";
 
-// 포스트 타입 정의
 type Post = {
   postId: number;
   title: string;
@@ -39,7 +37,6 @@ type Post = {
   };
 };
 
-// 댓글 타입 정의
 type PostReply = {
   postReplyId: number;
   postId: number;
@@ -52,15 +49,12 @@ type PostReply = {
   children: PostReply[] | null;
 };
 
-// 트리 형태 댓글 타입
 type ReplyTree = PostReply & { children: ReplyTree[] };
 
-// 메타 타이틀 설정
 export const meta: Route.MetaFunction = ({ params }) => [
   { title: `${params.postId} | connect us` },
 ];
 
-// Authorization 헤더 자동 추가 헬퍼
 function fetchWithAuth(url: string, opts: RequestInit = {}) {
   const token = localStorage.getItem("jwt");
   return fetch(url, {
@@ -72,7 +66,6 @@ function fetchWithAuth(url: string, opts: RequestInit = {}) {
   });
 }
 
-// 데이터 로더: 포스트와 댓글 가져오기
 export async function loader({ params }: { params: { postId: string } }) {
   try {
     const [postRes, repliesRes] = await Promise.all([
@@ -87,7 +80,6 @@ export async function loader({ params }: { params: { postId: string } }) {
     const post: Post = await postRes.json();
     const replies: PostReply[] = await repliesRes.json();
 
-    // children이 null이면 빈 배열로 변환
     const buildTree = (r: PostReply): ReplyTree => ({
       ...r,
       children: r.children?.map(buildTree) ?? [],
@@ -100,7 +92,6 @@ export async function loader({ params }: { params: { postId: string } }) {
   }
 }
 
-// 액션: 댓글 작성
 export async function action({
   request,
   params,
@@ -110,7 +101,7 @@ export async function action({
 }) {
   const formData = await request.formData();
   const reply = formData.get("reply");
-  if (!reply) return { error: "댓글 내용을 입력해주세요." };
+  if (!reply) return { error: "Reply content is required" };
 
   try {
     const res = await fetchWithAuth(
@@ -124,18 +115,16 @@ export async function action({
 
     if (!res.ok) {
       const err = await res.json();
-      throw new Error(err.message || "댓글 작성에 실패했습니다.");
+      throw new Error(err.message || "Failed to create reply");
     }
     return { success: true };
   } catch (error) {
     return {
-      error:
-        error instanceof Error ? error.message : "댓글 작성에 실패했습니다.",
+      error: error instanceof Error ? error.message : "Failed to create reply",
     };
   }
 }
 
-// 컴포넌트
 export default function PostPage() {
   const { post, replies } = useLoaderData<typeof loader>();
   const { isLoggedIn } = useAuth();
@@ -145,7 +134,7 @@ export default function PostPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      if (!replyContent.trim()) throw new Error("댓글을 입력해주세요.");
+      if (!replyContent.trim()) throw new Error("Reply content is required");
       const res = await fetchWithAuth(
         `${import.meta.env.VITE_API_BASE_URL}/post/${post.postId}/replies`,
         {
@@ -156,16 +145,15 @@ export default function PostPage() {
       );
       if (!res.ok) {
         const err = await res.json();
-        throw new Error(err.message || "댓글 작성에 실패했습니다.");
+        throw new Error(err.message || "Failed to create reply");
       }
       window.location.reload();
     } catch (err) {
-      console.error("댓글 작성 중 오류:", err);
-      alert(err instanceof Error ? err.message : "댓글 작성에 실패했습니다.");
+      console.error("Error creating reply:", err);
+      alert(err instanceof Error ? err.message : "Failed to create reply");
     }
   };
 
-  // Reply 컴포넌트에 넘길 props 변환
   const toReplyProps = (r: ReplyTree): ReplyProps => ({
     username: r.userName,
     avatarUrl: avatar,
@@ -188,7 +176,6 @@ export default function PostPage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-10">
-      {/* Breadcrumb */}
       <Breadcrumb>
         <BreadcrumbList>
           <BreadcrumbItem>
@@ -205,7 +192,6 @@ export default function PostPage() {
         </BreadcrumbList>
       </Breadcrumb>
 
-      {/* Post 내용 */}
       <div className="space-y-10">
         <div className="space-y-2 text-center">
           <h2 className="text-3xl font-bold">{post.title}</h2>
@@ -217,7 +203,6 @@ export default function PostPage() {
           <p className="text-muted-foreground mx-auto w-3/4">{post.content}</p>
         </div>
 
-        {/* 댓글 폼 */}
         {isLoggedIn ? (
           <form
             onSubmit={handleSubmit}
@@ -245,7 +230,6 @@ export default function PostPage() {
           </Button>
         )}
 
-        {/* 댓글 목록 */}
         <div className="space-y-10">
           <h4 className="font-semibold text-center">Replies</h4>
           <div className="flex flex-col gap-5">

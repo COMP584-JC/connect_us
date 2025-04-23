@@ -1,4 +1,3 @@
-// src/components/reply.tsx
 import { DotIcon, MessageCircleIcon } from "lucide-react";
 import { useState } from "react";
 import {
@@ -21,7 +20,6 @@ export interface ReplyProps {
   children?: ReplyProps[];
 }
 
-// Authorization 헤더 자동 추가 헬퍼
 function fetchWithAuth(url: string, opts: RequestInit = {}) {
   const token = localStorage.getItem("jwt");
   return fetch(url, {
@@ -50,7 +48,7 @@ export function Reply({
 
   const toggleReplying = () => {
     if (!isLoggedIn) {
-      setError("로그인이 필요합니다.");
+      setError("Login is required");
       return;
     }
     setReplying((prev) => !prev);
@@ -63,7 +61,6 @@ export function Reply({
 
     try {
       const response = await fetchWithAuth(
-        // postId는 빼고 replyId만 경로에 사용
         `${import.meta.env.VITE_API_BASE_URL}/post/replies/${replyId}/reply`,
         {
           method: "POST",
@@ -76,13 +73,11 @@ export function Reply({
       );
 
       if (!response.ok) {
-        let msg = "댓글 작성에 실패했습니다.";
+        let msg = "Failed to create reply";
         try {
           const errData = await response.json();
           if (errData?.message) msg = errData.message;
-        } catch {
-          // invalid or empty JSON
-        }
+        } catch {}
         throw new Error(msg);
       }
 
@@ -90,9 +85,7 @@ export function Reply({
       setReplyContent("");
       window.location.reload();
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "댓글 작성에 실패했습니다."
-      );
+      setError(err instanceof Error ? err.message : "Failed to create reply");
     }
   };
 

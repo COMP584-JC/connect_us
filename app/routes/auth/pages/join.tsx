@@ -38,18 +38,15 @@ export default function JoinPage() {
         }
       );
 
-      console.log(response);
-
       if (!response.ok) {
         const errorData = await response.json();
         console.error("Registration error:", errorData);
-        throw new Error(errorData.message || "회원가입에 실패했습니다.");
+        throw new Error(errorData.message || "Failed to register");
       }
 
-      // 회원가입 성공 시 로그인 페이지로 이동
       navigate("/auth/login");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "회원가입에 실패했습니다.");
+      setError(err instanceof Error ? err.message : "Failed to register");
     }
   };
 

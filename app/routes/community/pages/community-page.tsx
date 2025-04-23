@@ -119,7 +119,6 @@ export default function CommunityPage() {
                   title={post.title}
                   author={post.author}
                   authorAvatarUrl={post.authorAvatarUrl}
-                  category={post.category}
                   createdAt={post.createdAt}
                   expanded
                 />

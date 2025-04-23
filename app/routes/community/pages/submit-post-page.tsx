@@ -1,4 +1,3 @@
-// src/routes/submit-post-page.tsx
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { Hero } from "~/common/components/hero";
@@ -23,11 +22,9 @@ export default function SubmitPostPage() {
     const content = formData.get("content") as string;
 
     try {
-      // 1) localStorage에서 JWT 꺼내기
       const token = localStorage.getItem("jwt");
-      if (!token) throw new Error("로그인이 필요합니다.");
+      if (!token) throw new Error("Login is required");
 
-      // 2) Bearer 헤더로 POST 호출
       const response = await fetch(
         `${import.meta.env.VITE_API_BASE_URL}/post`,
         {
@@ -43,15 +40,13 @@ export default function SubmitPostPage() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || "게시글 작성에 실패했습니다.");
+        throw new Error(errorData.message || "Failed to create post");
       }
 
       const data = await response.json();
       navigate(`/community/${data.postId}`);
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "게시글 작성에 실패했습니다."
-      );
+      setError(err instanceof Error ? err.message : "Failed to create post");
     }
   };
 
