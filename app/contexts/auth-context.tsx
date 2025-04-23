@@ -1,11 +1,6 @@
 // auth-context.tsx
-import {
-  createContext,
-  type ReactNode,
-  useContext,
-  useEffect,
-  useState,
-} from "react";
+import type { ReactNode } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 
 interface AuthContextType {
   isLoggedIn: boolean;
@@ -19,81 +14,65 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
+  // 매 요청마다 Authorization 헤더에 토큰을 붙이는 헬퍼
+  const fetchWithAuth = (url: string, opts: RequestInit = {}) => {
+    const token = localStorage.getItem("jwt");
+    return fetch(url, {
+      ...opts,
+      headers: {
+        ...(opts.headers || {}),
+        Authorization: token ? `Bearer ${token}` : "",
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+    });
+  };
+
   useEffect(() => {
-    const checkAuth = async () => {
+    (async () => {
       setIsLoading(true);
       try {
-        const response = await fetch(
-          `${import.meta.env.VITE_API_BASE_URL}/users/check-auth`,
-          {
-            credentials: "include",
-            headers: {
-              "Cache-Control": "no-cache",
-              Pragma: "no-cache",
-              Accept: "application/json",
-              "X-Requested-With": "XMLHttpRequest",
-            },
-            mode: "cors",
-          }
+        const res = await fetchWithAuth(
+          `${import.meta.env.VITE_API_BASE_URL}/users/check-auth`
         );
-
-        const data = await response.json();
-        console.log("check-auth response:", response.status, data);
-
-        // 200 OK && data.isAuthenticated true → 로그인 상태
-        setIsLoggedIn(response.ok && data.isAuthenticated === true);
-      } catch (err) {
-        console.error("Auth check failed", err);
+        const data = await res.json();
+        console.log("check-auth:", res.status, data);
+        setIsLoggedIn(res.ok && data.isAuthenticated === true);
+      } catch {
         setIsLoggedIn(false);
       } finally {
         setIsLoading(false);
       }
-    };
-
-    checkAuth();
+    })();
   }, []);
 
   const login = async (username: string, password: string) => {
-    const response = await fetch(
+    const res = await fetch(
       `${import.meta.env.VITE_API_BASE_URL}/users/login`,
       {
         method: "POST",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password }),
       }
     );
-
-    if (response.ok) {
-      setIsLoggedIn(true);
-    } else {
-      const errorData = await response.json();
-      throw new Error(errorData.message || "로그인에 실패했습니다.");
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.message || "로그인에 실패했습니다.");
     }
+    const { token } = await res.json();
+    localStorage.setItem("jwt", token);
+    setIsLoggedIn(true);
   };
 
   const logout = async () => {
-    try {
-      const response = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL}/users/logout`,
-        {
-          method: "POST",
-          credentials: "include",
-        }
-      );
-      if (response.ok) {
-        setIsLoggedIn(false);
-      } else {
-        console.error("Logout failed:", response.status);
-      }
-    } catch (error) {
-      console.error("Logout error:", error);
-    }
+    await fetchWithAuth(`${import.meta.env.VITE_API_BASE_URL}/users/logout`, {
+      method: "POST",
+    });
+    localStorage.removeItem("jwt");
+    setIsLoggedIn(false);
   };
 
-  if (isLoading) {
-    return null;
-  }
+  if (isLoading) return null;
 
   return (
     <AuthContext.Provider value={{ isLoggedIn, login, logout }}>
@@ -103,9 +82,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 }
 
 export function useAuth() {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
-  return context;
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
+  return ctx;
 }

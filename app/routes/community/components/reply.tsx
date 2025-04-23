@@ -1,6 +1,6 @@
+// src/components/reply.tsx
 import { DotIcon, MessageCircleIcon } from "lucide-react";
 import { useState } from "react";
-import avatar from "~/assets/avatar.jpeg";
 import {
   Avatar,
   AvatarFallback,
@@ -19,6 +19,18 @@ export interface ReplyProps {
   postId: string;
   replyId: string;
   children?: ReplyProps[];
+}
+
+// Authorization 헤더 자동 추가 헬퍼
+function fetchWithAuth(url: string, opts: RequestInit = {}) {
+  const token = localStorage.getItem("jwt");
+  return fetch(url, {
+    ...opts,
+    headers: {
+      ...(opts.headers || {}),
+      Authorization: token ? `Bearer ${token}` : "",
+    },
+  });
 }
 
 export function Reply({
@@ -50,27 +62,32 @@ export function Reply({
     setError(null);
 
     try {
-      const response = await fetch(
+      const response = await fetchWithAuth(
+        // postId는 빼고 replyId만 경로에 사용
         `${import.meta.env.VITE_API_BASE_URL}/post/replies/${replyId}/reply`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            Accept: "application/json",
           },
           body: JSON.stringify({ reply: replyContent }),
-          credentials: "include",
         }
       );
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "댓글 작성에 실패했습니다.");
+        let msg = "댓글 작성에 실패했습니다.";
+        try {
+          const errData = await response.json();
+          if (errData?.message) msg = errData.message;
+        } catch {
+          // invalid or empty JSON
+        }
+        throw new Error(msg);
       }
 
-      // 성공 시 폼을 닫고 내용을 초기화
       setReplying(false);
       setReplyContent("");
-      // 페이지 새로고침으로 새로운 댓글 표시
       window.location.reload();
     } catch (err) {
       setError(
@@ -93,22 +110,29 @@ export function Reply({
             <span className="text-xs text-muted-foreground">{timestamp}</span>
           </div>
           <p className="text-muted-foreground">{content}</p>
-          <Button variant="ghost" className="self-end" onClick={toggleReplying}>
-            <MessageCircleIcon className="size-4" />
-            Reply
-          </Button>
+          {topLevel && (
+            <Button
+              variant="ghost"
+              className="self-end"
+              onClick={toggleReplying}
+            >
+              <MessageCircleIcon className="size-4" /> Reply
+            </Button>
+          )}
         </div>
       </div>
+
       {error && (
         <div className="w-full p-4 text-sm text-red-500 bg-red-50 rounded-md">
           {error}
         </div>
       )}
+
       {replying && (
         <form onSubmit={handleSubmit} className="flex items-start gap-5 w-3/4">
           <Avatar className="size-14">
             <AvatarFallback>N</AvatarFallback>
-            <AvatarImage src={avatar} />
+            <AvatarImage src={avatarUrl} />
           </Avatar>
           <div className="flex flex-col gap-5 items-end w-full">
             <Textarea
@@ -123,8 +147,9 @@ export function Reply({
           </div>
         </form>
       )}
+
       {children && children.length > 0 && (
-        <div className="pl-20 w-full">
+        <div className="pl-20 w-full space-y-6">
           {children.map((child) => (
             <Reply
               key={child.replyId}

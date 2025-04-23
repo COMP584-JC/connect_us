@@ -1,3 +1,4 @@
+// src/routes/post-page.tsx
 import { DotIcon } from "lucide-react";
 import { useState } from "react";
 import { Link, useLoaderData, useNavigate } from "react-router";
@@ -20,6 +21,7 @@ import { useAuth } from "~/contexts/auth-context";
 import { Reply, type ReplyProps } from "../components/reply";
 import type { Route } from "./+types/post-page";
 
+// 포스트 타입 정의
 type Post = {
   postId: number;
   title: string;
@@ -37,6 +39,7 @@ type Post = {
   };
 };
 
+// 댓글 타입 정의
 type PostReply = {
   postReplyId: number;
   postId: number;
@@ -49,73 +52,55 @@ type PostReply = {
   children: PostReply[] | null;
 };
 
-type ReplyTree = PostReply & {
-  children: ReplyTree[];
-};
+// 트리 형태 댓글 타입
+type ReplyTree = PostReply & { children: ReplyTree[] };
 
-export const meta: Route.MetaFunction = ({ params }) => {
-  return [{ title: `${params.postId} | connect us` }];
-};
+// 메타 타이틀 설정
+export const meta: Route.MetaFunction = ({ params }) => [
+  { title: `${params.postId} | connect us` },
+];
 
+// Authorization 헤더 자동 추가 헬퍼
+function fetchWithAuth(url: string, opts: RequestInit = {}) {
+  const token = localStorage.getItem("jwt");
+  return fetch(url, {
+    ...opts,
+    headers: {
+      ...(opts.headers || {}),
+      Authorization: token ? `Bearer ${token}` : "",
+    },
+  });
+}
+
+// 데이터 로더: 포스트와 댓글 가져오기
 export async function loader({ params }: { params: { postId: string } }) {
   try {
-    console.log("API Base URL:", import.meta.env.VITE_API_BASE_URL);
-    console.log(
-      "Request URL:",
-      `${import.meta.env.VITE_API_BASE_URL}/post/${params.postId}`
-    );
-
-    const [postResponse, repliesResponse] = await Promise.all([
-      fetch(`${import.meta.env.VITE_API_BASE_URL}/post/${params.postId}`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        credentials: "include",
-        mode: "cors",
-      }),
+    const [postRes, repliesRes] = await Promise.all([
+      fetch(`${import.meta.env.VITE_API_BASE_URL}/post/${params.postId}`),
       fetch(
-        `${import.meta.env.VITE_API_BASE_URL}/post/${params.postId}/replies`,
-        {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            Accept: "application/json",
-          },
-          credentials: "include",
-          mode: "cors",
-        }
+        `${import.meta.env.VITE_API_BASE_URL}/post/${params.postId}/replies`
       ),
     ]);
 
-    if (!postResponse.ok) {
-      throw new Response("Post not found", { status: 404 });
-    }
+    if (!postRes.ok) throw new Response("Post not found", { status: 404 });
 
-    const post: Post = await postResponse.json();
-    const replies: PostReply[] = await repliesResponse.json();
+    const post: Post = await postRes.json();
+    const replies: PostReply[] = await repliesRes.json();
 
-    // 댓글이 없는 경우 빈 배열 반환
-    if (!replies || replies.length === 0) {
-      return { post, replies: [] };
-    }
-
-    // children이 null인 경우 빈 배열로 변환
-    const convertNullChildren = (reply: PostReply): ReplyTree => ({
-      ...reply,
-      children: reply.children ? reply.children.map(convertNullChildren) : [],
+    // children이 null이면 빈 배열로 변환
+    const buildTree = (r: PostReply): ReplyTree => ({
+      ...r,
+      children: r.children?.map(buildTree) ?? [],
     });
 
-    const replyTree = replies.map(convertNullChildren);
-
-    return { post, replies: replyTree };
+    return { post, replies: replies.map(buildTree) };
   } catch (error) {
     console.error("Error loading post:", error);
     throw new Response("Error loading post", { status: 500 });
   }
 }
 
+// 액션: 댓글 작성
 export async function action({
   request,
   params,
@@ -125,30 +110,22 @@ export async function action({
 }) {
   const formData = await request.formData();
   const reply = formData.get("reply");
-
-  if (!reply) {
-    return { error: "댓글 내용을 입력해주세요." };
-  }
+  if (!reply) return { error: "댓글 내용을 입력해주세요." };
 
   try {
-    const response = await fetch(
+    const res = await fetchWithAuth(
       `${import.meta.env.VITE_API_BASE_URL}/post/${params.postId}/replies`,
       {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ reply }),
-        credentials: "include",
       }
     );
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || "댓글 작성에 실패했습니다.");
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.message || "댓글 작성에 실패했습니다.");
     }
-
     return { success: true };
   } catch (error) {
     return {
@@ -158,57 +135,60 @@ export async function action({
   }
 }
 
+// 컴포넌트
 export default function PostPage() {
   const { post, replies } = useLoaderData<typeof loader>();
   const { isLoggedIn } = useAuth();
   const navigate = useNavigate();
   const [replyContent, setReplyContent] = useState("");
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
     try {
-      const response = await fetch(
+      if (!replyContent.trim()) throw new Error("댓글을 입력해주세요.");
+      const res = await fetchWithAuth(
         `${import.meta.env.VITE_API_BASE_URL}/post/${post.postId}/replies`,
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Accept: "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ reply: replyContent }),
-          credentials: "include",
         }
       );
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "댓글 작성에 실패했습니다.");
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || "댓글 작성에 실패했습니다.");
       }
-
-      // 댓글 작성 성공 후 페이지 새로고침
       window.location.reload();
-    } catch (error) {
-      console.error("댓글 작성 중 오류 발생:", error);
-      alert(
-        error instanceof Error ? error.message : "댓글 작성에 실패했습니다."
-      );
+    } catch (err) {
+      console.error("댓글 작성 중 오류:", err);
+      alert(err instanceof Error ? err.message : "댓글 작성에 실패했습니다.");
     }
   };
 
-  const convertToReplyProps = (reply: ReplyTree): ReplyProps => ({
-    username: reply.userName,
+  // Reply 컴포넌트에 넘길 props 변환
+  const toReplyProps = (r: ReplyTree): ReplyProps => ({
+    username: r.userName,
     avatarUrl: avatar,
-    content: reply.reply,
-    timestamp: new Date(reply.createdAt).toLocaleDateString(),
+    content: r.reply,
+    timestamp: new Date(r.createdAt).toLocaleDateString(),
     topLevel: true,
     postId: String(post.postId),
-    replyId: String(reply.postReplyId),
-    children: reply.children?.map(convertToReplyProps),
+    replyId: String(r.postReplyId),
+    children: r.children.map((child) => ({
+      username: child.userName,
+      avatarUrl: avatar,
+      content: child.reply,
+      timestamp: new Date(child.createdAt).toLocaleDateString(),
+      topLevel: false,
+      postId: String(post.postId),
+      replyId: String(child.postReplyId),
+      children: [],
+    })),
   });
 
   return (
     <div className="max-w-4xl mx-auto space-y-10">
+      {/* Breadcrumb */}
       <Breadcrumb>
         <BreadcrumbList>
           <BreadcrumbItem>
@@ -224,51 +204,54 @@ export default function PostPage() {
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
+
+      {/* Post 내용 */}
       <div className="space-y-10">
-        <div className="flex flex-col items-center w-full gap-10">
-          <div className="space-y-20 w-full">
-            <div className="space-y-2 text-center">
-              <h2 className="text-3xl font-bold">{post.title}</h2>
-              <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-                <span>@{post.user.username}</span>
-                <DotIcon className="size-5" />
-                <span>{new Date(post.createdAt).toLocaleDateString()}</span>
-              </div>
-              <p className="text-muted-foreground mx-auto w-3/4">
-                {post.content}
-              </p>
+        <div className="space-y-2 text-center">
+          <h2 className="text-3xl font-bold">{post.title}</h2>
+          <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+            <span>@{post.user.username}</span>
+            <DotIcon className="size-5" />
+            <span>{new Date(post.createdAt).toLocaleDateString()}</span>
+          </div>
+          <p className="text-muted-foreground mx-auto w-3/4">{post.content}</p>
+        </div>
+
+        {/* 댓글 폼 */}
+        {isLoggedIn ? (
+          <form
+            onSubmit={handleSubmit}
+            className="flex items-start gap-5 w-3/4 mx-auto"
+          >
+            <Avatar className="size-14">
+              <AvatarFallback>{post.user.name[0]}</AvatarFallback>
+              <AvatarImage src={avatar} />
+            </Avatar>
+            <div className="flex flex-col gap-5 items-end w-full">
+              <Textarea
+                value={replyContent}
+                onChange={(e) => setReplyContent(e.target.value)}
+                placeholder="Write a reply"
+                className="w-full resize-none"
+                rows={5}
+                required
+              />
+              <Button type="submit">Reply</Button>
             </div>
-            <form
-              onSubmit={handleSubmit}
-              className="flex items-start gap-5 w-3/4 mx-auto"
-            >
-              <Avatar className="size-14">
-                <AvatarFallback>{post.user.name[0]}</AvatarFallback>
-                <AvatarImage src={avatar} />
-              </Avatar>
-              <div className="flex flex-col gap-5 items-end w-full">
-                <Textarea
-                  value={replyContent}
-                  onChange={(e) => setReplyContent(e.target.value)}
-                  placeholder="Write a reply"
-                  className="w-full resize-none"
-                  rows={5}
-                  required
-                />
-                <Button type="submit">Reply</Button>
-              </div>
-            </form>
-            <div className="space-y-10">
-              <h4 className="font-semibold text-center">Replies</h4>
-              <div className="flex flex-col gap-5">
-                {replies.map((reply) => (
-                  <Reply
-                    key={reply.postReplyId}
-                    {...convertToReplyProps(reply)}
-                  />
-                ))}
-              </div>
-            </div>
+          </form>
+        ) : (
+          <Button onClick={() => navigate("/auth/login")}>
+            Please login to reply
+          </Button>
+        )}
+
+        {/* 댓글 목록 */}
+        <div className="space-y-10">
+          <h4 className="font-semibold text-center">Replies</h4>
+          <div className="flex flex-col gap-5">
+            {replies.map((r) => (
+              <Reply key={r.postReplyId} {...toReplyProps(r)} />
+            ))}
           </div>
         </div>
       </div>

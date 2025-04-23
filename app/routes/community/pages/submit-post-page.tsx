@@ -1,13 +1,14 @@
+// src/routes/submit-post-page.tsx
 import { useState } from "react";
-import { Form, useNavigate } from "react-router";
+import { useNavigate } from "react-router";
 import { Hero } from "~/common/components/hero";
 import InputPair from "~/common/components/input-pair";
 import { Button } from "~/common/components/ui/button";
 import type { Route } from "./+types/submit-post-page";
 
-export const meta: Route.MetaFunction = () => {
-  return [{ title: "Submit Post | connect us" }];
-};
+export const meta: Route.MetaFunction = () => [
+  { title: "Submit Post | connect us" },
+];
 
 export default function SubmitPostPage() {
   const navigate = useNavigate();
@@ -22,6 +23,11 @@ export default function SubmitPostPage() {
     const content = formData.get("content") as string;
 
     try {
+      // 1) localStorage에서 JWT 꺼내기
+      const token = localStorage.getItem("jwt");
+      if (!token) throw new Error("로그인이 필요합니다.");
+
+      // 2) Bearer 헤더로 POST 호출
       const response = await fetch(
         `${import.meta.env.VITE_API_BASE_URL}/post`,
         {
@@ -29,9 +35,9 @@ export default function SubmitPostPage() {
           headers: {
             "Content-Type": "application/json",
             Accept: "application/json",
+            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({ title, content }),
-          credentials: "include",
         }
       );
 
@@ -41,7 +47,6 @@ export default function SubmitPostPage() {
       }
 
       const data = await response.json();
-      // 작성된 게시글 페이지로 이동
       navigate(`/community/${data.postId}`);
     } catch (err) {
       setError(
@@ -61,7 +66,7 @@ export default function SubmitPostPage() {
           {error}
         </div>
       )}
-      <Form
+      <form
         onSubmit={handleSubmit}
         className="flex flex-col gap-10 max-w-screen-md mx-auto"
       >
@@ -71,7 +76,7 @@ export default function SubmitPostPage() {
           id="title"
           description="(40 characters or less)"
           required
-          placeholder="i.e What is the best productivity tool?"
+          placeholder="i.e. What is the best productivity tool?"
         />
         <InputPair
           label="Content"
@@ -79,13 +84,13 @@ export default function SubmitPostPage() {
           id="content"
           description="(1000 characters or less)"
           required
-          placeholder="i.e I'm looking for a tool that can help me manage my time and tasks. What are the best tools out there?"
+          placeholder="i.e. I'm looking for a tool that can help me manage my time and tasks. What are the best tools out there?"
           textArea
         />
         <Button type="submit" className="mx-auto">
           Create Discussion
         </Button>
-      </Form>
+      </form>
     </div>
   );
 }
